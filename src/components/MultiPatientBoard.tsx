@@ -173,6 +173,20 @@ LOGGED: ${p.timestamp}
                   <p className="text-xs text-slate-300 line-clamp-1">
                     {patient.summary}
                   </p>
+
+                  {patient.fullTriage.medicalAlerts && patient.fullTriage.medicalAlerts.length > 0 && (
+                    <div className="pt-1 flex flex-wrap gap-1">
+                      {patient.fullTriage.medicalAlerts.map((alert, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-800/50 text-amber-300"
+                        >
+                          <span>⚠️</span>
+                          <span>{alert.split(':')[0]}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

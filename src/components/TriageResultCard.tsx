@@ -191,6 +191,35 @@ STEPS COMPLETED: ${completedCount}/${steps.length}`;
           </div>
         </div>
 
+        {/* Critical Medical History Alerts (Allergies / Chronic Conditions) */}
+        {triage.medicalAlerts && triage.medicalAlerts.length > 0 && (
+          <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/60 shadow-md animate-in fade-in duration-200">
+            <div className="flex items-start gap-2.5">
+              <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex-shrink-0 mt-0.5">
+                <ShieldAlert className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="space-y-1.5 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-amber-400">
+                    MEDICAL HISTORY & ALLERGY FLAGS
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/50 text-[9px] font-mono font-bold">
+                    {triage.medicalAlerts.length} ACTIVE
+                  </span>
+                </div>
+                <ul className="space-y-1 mt-1">
+                  {triage.medicalAlerts.map((alert, idx) => (
+                    <li key={idx} className="text-xs text-amber-200/90 font-medium leading-relaxed flex items-start gap-1.5">
+                      <span className="text-amber-400 font-bold">•</span>
+                      <span>{alert}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Step-by-Step Interactive Checklist */}
         <div>
           <div className="flex items-center justify-between mb-2.5">

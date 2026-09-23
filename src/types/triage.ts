@@ -36,6 +36,7 @@ export interface TriageResult {
   responderAudioScript: string;
   mistReport: MistReport;
   recommendedTimerType?: 'cpr' | 'bleeding_pressure' | 'tourniquet' | 'reassess' | 'none';
+  medicalAlerts?: string[];
 }
 
 export interface ChatMessage {
@@ -55,6 +56,7 @@ export interface PatientContext {
   severeBleeding?: boolean;
   walking?: boolean;
   location?: string;
+  medicalHistory?: string[]; // allergies, chronic conditions (e.g. Asthma, Penicillin Allergy, Blood Thinners, Diabetes)
 }
 
 export interface MCIPatient {

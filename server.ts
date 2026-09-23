@@ -81,21 +81,66 @@ export interface TriageResult {
     treatment: string;
   };
   recommendedTimerType?: 'cpr' | 'bleeding_pressure' | 'tourniquet' | 'reassess' | 'none';
+  medicalAlerts?: string[];
+}
+
+function generateServerMedicalAlerts(history: string[] = []): string[] {
+  const alerts: string[] = [];
+  const lowerHist = history.map((h) => h.toLowerCase());
+
+  const allergyItems = history.filter(
+    (h) =>
+      h.toLowerCase().includes('allerg') ||
+      h.toLowerCase().includes('penicillin') ||
+      h.toLowerCase().includes('latex') ||
+      h.toLowerCase().includes('aspirin')
+  );
+  if (allergyItems.length > 0) {
+    alerts.push(`ALLERGY WARNING: Documented allergies: ${allergyItems.join(', ')}. Strictly avoid contraindicated medications or materials.`);
+  }
+
+  if (lowerHist.some((h) => h.includes('blood thinner') || h.includes('anticoagulant') || h.includes('warfarin') || h.includes('aspirin') || h.includes('heparin'))) {
+    alerts.push(`CRITICAL COAGULOPATHY: Patient is on blood thinners / anticoagulants. Accelerated hemorrhage risk. Hold continuous firm pressure.`);
+  }
+
+  if (lowerHist.some((h) => h.includes('asthma') || h.includes('copd') || h.includes('inhaler'))) {
+    alerts.push(`RESPIRATORY ALERT: Known Asthma / COPD. If in distress, assist with prescribed rescue inhaler.`);
+  }
+
+  if (lowerHist.some((h) => h.includes('diabet') || h.includes('insulin'))) {
+    alerts.push(`METABOLIC ALERT: Diabetic patient. High risk of hypoglycemia. Do not give fluids if drowsy or unconscious.`);
+  }
+
+  if (lowerHist.some((h) => h.includes('cardiac') || h.includes('heart') || h.includes('angina'))) {
+    alerts.push(`CARDIAC ALERT: Pre-existing heart disease. Restrict movement completely and monitor for sudden cardiac arrest.`);
+  }
+
+  return alerts;
 }
 
 // Fallback rule-based triage evaluator if API key is missing or model network drops
 function evaluateLocalRuleTriage(userInput: string, context?: any): TriageResult {
   const text = userInput.toLowerCase();
   
+  const hasBloodThinners = (context?.medicalHistory || []).some(
+    (h: string) =>
+      h.toLowerCase().includes('blood thinner') ||
+      h.toLowerCase().includes('anticoagulant') ||
+      h.toLowerCase().includes('warfarin') ||
+      h.toLowerCase().includes('aspirin')
+  );
+
   const hasSnakebite = text.includes('snake') || text.includes('saanp') || text.includes('bitten by snake') || text.includes('bite') || text.includes('fang');
   const hasElectricShock = text.includes('electric') || text.includes('current') || text.includes('shock') || text.includes('wire') || text.includes('electrocution');
-  const hasSevereBleeding = text.includes('arterial') || text.includes('spurting') || text.includes('gushing') || text.includes('heavy bleed') || text.includes('khoon') || text.includes('pools of blood') || text.includes('tourniquet') || context?.severeBleeding;
+  const hasSevereBleeding = text.includes('arterial') || text.includes('spurting') || text.includes('gushing') || text.includes('heavy bleed') || text.includes('khoon') || text.includes('pools of blood') || text.includes('tourniquet') || context?.severeBleeding || (hasBloodThinners && (text.includes('bleed') || text.includes('cut') || text.includes('wound')));
   const isUnconscious = text.includes('unconscious') || text.includes('unresponsive') || text.includes('behoshi') || text.includes('passed out') || text.includes('collapsed') || context?.conscious === false;
   const isNotBreathing = text.includes('not breathing') || text.includes('saans nahi') || text.includes('no pulse') || text.includes('cardiac arrest') || context?.breathing === false;
   const hasAirwayCompromise = text.includes('choking') || text.includes('stridor') || text.includes('gasping') || text.includes('blue lips') || text.includes('cyanosis') || text.includes('wheezing');
   const hasChestPain = text.includes('chest pain') || text.includes('chhati') || text.includes('heart attack') || text.includes('crushing chest');
   const hasFracture = text.includes('broken') || text.includes('fracture') || text.includes('haddi') || text.includes('bone poking') || text.includes('deformed');
   const isWalking = text.includes('walking') || text.includes('standing') || text.includes('talking normally') || context?.walking === true;
+
+  const baseResult: TriageResult = (() => {
 
   // Snakebite Emergency in India
   if (hasSnakebite) {
@@ -504,6 +549,14 @@ function evaluateLocalRuleTriage(userInput: string, context?: any): TriageResult
     },
     recommendedTimerType: 'none',
   };
+})();
+
+  const alerts = generateServerMedicalAlerts(context?.medicalHistory || []);
+  if (alerts.length > 0) {
+    baseResult.medicalAlerts = alerts;
+    baseResult.mistReport.treatment = `${baseResult.mistReport.treatment} [Medical History: ${context?.medicalHistory?.join(', ')}]`;
+  }
+  return baseResult;
 }
 
 // POST /api/triage endpoint
@@ -525,6 +578,7 @@ app.post('/api/triage', async (req: Request, res: Response) => {
       patientContext.breathing !== undefined ? `Breathing: ${patientContext.breathing ? 'Normal/Present' : 'Not breathing / Labored / Absent'}` : '',
       patientContext.severeBleeding !== undefined ? `Severe Bleeding: ${patientContext.severeBleeding ? 'YES - Profuse bleeding present' : 'No severe bleeding'}` : '',
       patientContext.walking !== undefined ? `Mobility: ${patientContext.walking ? 'Ambulatory (able to walk)' : 'Non-ambulatory'}` : '',
+      patientContext.medicalHistory && patientContext.medicalHistory.length > 0 ? `Known Medical History / Allergies / Chronic Conditions: ${patientContext.medicalHistory.join(', ')}` : '',
       patientContext.location ? `Location / Hazard: ${patientContext.location}` : '',
     ].filter(Boolean).join('; ');
 
@@ -631,6 +685,11 @@ Classify triage priority using START/SALT protocols and produce comprehensive JS
               recommendedTimerType: {
                 type: Type.STRING,
                 description: 'One of: "cpr", "bleeding_pressure", "tourniquet", "reassess", "none"',
+              },
+              medicalAlerts: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: 'Special alerts, contraindications, or warnings based on reported allergies, blood thinners, or chronic medical conditions.',
               },
             },
             required: [

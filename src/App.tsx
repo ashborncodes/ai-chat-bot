@@ -42,7 +42,12 @@ import {
   Flame, 
   MessageSquare,
   ShieldCheck,
-  Info
+  Info,
+  Pill,
+  Plus,
+  X,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { 
   createSpeechRecognition, 
@@ -59,6 +64,17 @@ import {
   loadSessionState, 
   clearSessionState 
 } from './utils/sessionStorage';
+
+const PRESET_MEDICAL_HISTORY = [
+  { id: 'penicillin', label: 'Penicillin Allergy', tag: 'Penicillin Allergy', category: 'allergy' },
+  { id: 'latex', label: 'Latex Allergy', tag: 'Latex Allergy', category: 'allergy' },
+  { id: 'thinners', label: 'Blood Thinners', tag: 'Blood Thinners', category: 'condition' },
+  { id: 'asthma', label: 'Asthma / Inhaler', tag: 'Asthma / COPD', category: 'condition' },
+  { id: 'diabetes', label: 'Diabetes', tag: 'Diabetes / Insulin', category: 'condition' },
+  { id: 'cardiac', label: 'Heart Disease', tag: 'Cardiac / Heart Disease', category: 'condition' },
+  { id: 'seizures', label: 'Seizures', tag: 'Seizures / Epilepsy', category: 'condition' },
+  { id: 'hypertension', label: 'Hypertension', tag: 'Hypertension (High BP)', category: 'condition' },
+];
 
 export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -78,7 +94,12 @@ export default function App() {
     breathing: true,
     severeBleeding: false,
     walking: false,
+    medicalHistory: [],
   });
+
+  // Medical History UI state
+  const [customHistoryInput, setCustomHistoryInput] = useState('');
+  const [showMedicalHistoryPanel, setShowMedicalHistoryPanel] = useState(false);
 
   // MCI Scene Board
   const [mciPatients, setMciPatients] = useState<MCIPatient[]>([]);
@@ -90,11 +111,51 @@ export default function App() {
     const saved = loadSessionState();
     if (saved && saved.messages && saved.messages.length > 0) {
       setMessages(saved.messages);
-      if (saved.patientContext) setPatientContext(saved.patientContext);
+      if (saved.patientContext) {
+        setPatientContext({
+          medicalHistory: [],
+          ...saved.patientContext,
+        });
+      }
       if (saved.mciPatients) setMciPatients(saved.mciPatients);
       setHasRestoredSession(true);
     }
   }, []);
+
+  const handleToggleHistoryItem = (tag: string) => {
+    setPatientContext((prev) => {
+      const current = prev.medicalHistory || [];
+      const exists = current.includes(tag);
+      return {
+        ...prev,
+        medicalHistory: exists ? current.filter((t) => t !== tag) : [...current, tag],
+      };
+    });
+  };
+
+  const handleAddCustomHistory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = customHistoryInput.trim();
+    if (!clean) return;
+    setPatientContext((prev) => {
+      const current = prev.medicalHistory || [];
+      if (current.some((c) => c.toLowerCase() === clean.toLowerCase())) {
+        return prev;
+      }
+      return {
+        ...prev,
+        medicalHistory: [...current, clean],
+      };
+    });
+    setCustomHistoryInput('');
+  };
+
+  const handleRemoveHistoryItem = (tagToRemove: string) => {
+    setPatientContext((prev) => ({
+      ...prev,
+      medicalHistory: (prev.medicalHistory || []).filter((t) => t !== tagToRemove),
+    }));
+  };
 
   // Persist session to LocalStorage whenever state updates
   useEffect(() => {
@@ -314,7 +375,10 @@ export default function App() {
         breathing: true,
         severeBleeding: false,
         walking: false,
+        medicalHistory: [],
       });
+      setCustomHistoryInput('');
+      setShowMedicalHistoryPanel(false);
       clearSessionState();
       setHasRestoredSession(false);
     }
@@ -470,6 +534,11 @@ export default function App() {
                                     WALKING
                                   </span>
                                 )}
+                                {msg.patientContext.medicalHistory && msg.patientContext.medicalHistory.length > 0 && (
+                                  <span className="text-amber-300 font-bold bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-800/40">
+                                    Hx: {msg.patientContext.medicalHistory.join(', ')}
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
@@ -536,8 +605,8 @@ export default function App() {
               </div>
 
               {/* Quick Vitals Context Buttons (Fast 1-tap patient parameters) */}
-              <div className="mt-4 pt-3 border-t border-slate-800">
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 text-xs">
+              <div className="mt-4 pt-3 border-t border-slate-800 space-y-2">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs">
                   <span className="text-[11px] font-mono text-slate-400 mr-1 flex items-center gap-1">
                     <Activity className="w-3 h-3 text-red-400" />
                     Quick Vitals:
@@ -619,7 +688,162 @@ export default function App() {
                   >
                     {patientContext.walking ? 'Ambulatory / Walking 🚶' : 'Non-Walking'}
                   </button>
+
+                  {/* Medical History & Allergies Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowMedicalHistoryPanel(!showMedicalHistoryPanel)}
+                    className={`px-2.5 py-1 rounded-lg font-mono text-xs border flex items-center gap-1.5 transition ${
+                      (patientContext.medicalHistory?.length || 0) > 0
+                        ? 'bg-amber-950/90 text-amber-300 border-amber-600 font-bold shadow-sm shadow-amber-950'
+                        : showMedicalHistoryPanel
+                        ? 'bg-slate-800 text-slate-200 border-slate-600'
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
+                    }`}
+                  >
+                    <Pill className="w-3.5 h-3.5 text-amber-400" />
+                    <span>
+                      Medical History & Allergies
+                      {(patientContext.medicalHistory?.length || 0) > 0
+                        ? ` (${patientContext.medicalHistory!.length})`
+                        : ''}
+                    </span>
+                    {showMedicalHistoryPanel ? (
+                      <ChevronUp className="w-3 h-3 text-slate-400 ml-0.5" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                    )}
+                  </button>
                 </div>
+
+                {/* Medical History Drawer / Input Panel */}
+                {showMedicalHistoryPanel && (
+                  <div className="p-3 rounded-xl bg-slate-900/90 border border-amber-800/50 shadow-inner space-y-2.5 animate-in fade-in duration-150">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <Pill className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                        <span className="text-xs font-mono font-bold text-amber-300">
+                          Pre-Existing Conditions & Allergies (Offline Ready)
+                        </span>
+                        <span className="text-[10px] text-slate-400 hidden sm:inline">
+                          • Factors into emergency priorities and contraindications
+                        </span>
+                      </div>
+                      {(patientContext.medicalHistory?.length || 0) > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setPatientContext((prev) => ({ ...prev, medicalHistory: [] }))}
+                          className="text-[11px] text-slate-400 hover:text-rose-400 font-mono underline transition text-left"
+                        >
+                          Clear all ({patientContext.medicalHistory!.length})
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Quick 1-Tap Preset Conditions */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {PRESET_MEDICAL_HISTORY.map((item) => {
+                        const isActive = (patientContext.medicalHistory || []).includes(item.tag);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => handleToggleHistoryItem(item.tag)}
+                            className={`px-2 py-1 rounded-md text-[11px] font-mono border transition flex items-center gap-1 ${
+                              isActive
+                                ? 'bg-amber-950 text-amber-200 border-amber-500 font-bold shadow-sm shadow-amber-950/50'
+                                : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                            }`}
+                          >
+                            <span>{isActive ? '✓' : '+'}</span>
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Custom Condition / Allergy Freeform Input */}
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <input
+                        type="text"
+                        value={customHistoryInput}
+                        onChange={(e) => setCustomHistoryInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCustomHistory(e);
+                          }
+                        }}
+                        placeholder="Add custom allergy or condition (e.g. Aspirin, Hemophilia, Pregnancy, Kidney disease)..."
+                        className="flex-1 bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 placeholder-slate-500 focus:outline-none focus:border-amber-500 font-sans"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomHistory}
+                        disabled={!customHistoryInput.trim()}
+                        className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold text-xs font-mono transition flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add</span>
+                      </button>
+                    </div>
+
+                    {/* Active History Chips */}
+                    {(patientContext.medicalHistory?.length || 0) > 0 ? (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-800/80">
+                        <span className="text-[10px] font-mono text-slate-400 mr-1">Active Flags:</span>
+                        {patientContext.medicalHistory!.map((tag, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/80 border border-amber-600/70 text-amber-300 text-xs font-mono"
+                          >
+                            <span>{tag}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveHistoryItem(tag)}
+                              className="text-amber-400 hover:text-white ml-0.5 p-0.5"
+                              title="Remove"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {/* If panel closed but active flags exist, show a minimal reminder row */}
+                {!showMedicalHistoryPanel && (patientContext.medicalHistory?.length || 0) > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs pt-1">
+                    <span className="text-[10px] font-mono text-amber-400 flex items-center gap-1">
+                      <Pill className="w-3 h-3" />
+                      Attached Medical History:
+                    </span>
+                    {patientContext.medicalHistory!.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-950/50 border border-amber-800/40 text-amber-300 text-[11px] font-mono"
+                      >
+                        <span>{tag}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveHistoryItem(tag)}
+                          className="hover:text-white"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setShowMedicalHistoryPanel(true)}
+                      className="text-[10px] text-amber-400/80 hover:text-amber-300 underline font-mono ml-1"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                )}
 
                 {/* Voice Status or Error */}
                 {voiceError && (

@@ -46,13 +46,17 @@ export function loadSessionState(): SavedSessionState | null {
     return {
       messages: rawMessages ? JSON.parse(rawMessages) : [],
       patientContext: rawContext
-        ? JSON.parse(rawContext)
+        ? {
+            medicalHistory: [],
+            ...JSON.parse(rawContext),
+          }
         : {
             ageGroup: 'Adult',
             conscious: true,
             breathing: true,
             severeBleeding: false,
             walking: false,
+            medicalHistory: [],
           },
       mciPatients: rawMci ? JSON.parse(rawMci) : [],
       lastSaved: rawTime || new Date().toISOString(),

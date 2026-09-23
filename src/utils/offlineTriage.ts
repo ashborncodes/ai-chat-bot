@@ -66,7 +66,176 @@ export function cacheCoreProtocols(): void {
   }
 }
 
+export function generateMedicalAlerts(history: string[] = [], text: string, context?: PatientContext): string[] {
+  const alerts: string[] = [];
+  const lowerHist = history.map((h) => h.toLowerCase());
+
+  // Allergies
+  const allergyItems = history.filter(
+    (h) =>
+      h.toLowerCase().includes('allerg') ||
+      h.toLowerCase().includes('penicillin') ||
+      h.toLowerCase().includes('latex') ||
+      h.toLowerCase().includes('aspirin')
+  );
+  if (allergyItems.length > 0) {
+    alerts.push(
+      `ALLERGY WARNING: Patient has documented allergies: ${allergyItems.join(', ')}. Strictly avoid contraindicated medications, dressing materials, or latex gloves.`
+    );
+  }
+
+  // Blood Thinners / Anticoagulants
+  if (
+    lowerHist.some(
+      (h) =>
+        h.includes('blood thinner') ||
+        h.includes('anticoagulant') ||
+        h.includes('warfarin') ||
+        h.includes('aspirin') ||
+        h.includes('heparin') ||
+        h.includes('eliquis')
+    )
+  ) {
+    alerts.push(
+      `CRITICAL COAGULOPATHY ALERT: Patient on Blood Thinners / Anticoagulants. Clotting is severely compromised. Hemorrhage will be accelerated and prolonged. Maintain continuous two-handed firm pressure; do NOT remove pressure to inspect.`
+    );
+  }
+
+  // Asthma / COPD
+  if (
+    lowerHist.some(
+      (h) =>
+        h.includes('asthma') ||
+        h.includes('copd') ||
+        h.includes('respiratory') ||
+        h.includes('inhaler')
+    )
+  ) {
+    alerts.push(
+      `RESPIRATORY ALERT: Known Asthma / COPD. If wheezing or labored breathing, keep in upright position and assist with prescribed rescue inhaler (Salbutamol) immediately.`
+    );
+  }
+
+  // Diabetes / Insulin
+  if (
+    lowerHist.some(
+      (h) =>
+        h.includes('diabet') ||
+        h.includes('insulin') ||
+        h.includes('sugar')
+    )
+  ) {
+    alerts.push(
+      `METABOLIC ALERT: Diabetic patient. High risk of hypoglycemic shock (low blood sugar). If conscious and coherent, provide glucose/sweet liquid. If unresponsive, NEVER give oral fluids; keep airway clear.`
+    );
+  }
+
+  // Cardiac / Heart Disease
+  if (
+    lowerHist.some(
+      (h) =>
+        h.includes('cardiac') ||
+        h.includes('heart') ||
+        h.includes('angina') ||
+        h.includes('stent') ||
+        h.includes('bypass')
+    )
+  ) {
+    alerts.push(
+      `CARDIAC ALERT: Pre-existing heart condition. Absolute physical rest required. Prepare for acute coronary syndrome or sudden rhythm collapse.`
+    );
+  }
+
+  // Epilepsy / Seizures
+  if (
+    lowerHist.some(
+      (h) =>
+        h.includes('seizure') ||
+        h.includes('epilepsy')
+    )
+  ) {
+    alerts.push(
+      `NEUROLOGICAL ALERT: History of seizures/epilepsy. Protect head from hard surfaces. Do NOT insert anything into mouth or physically restrain convulsions.`
+    );
+  }
+
+  // Hypertension / High BP
+  if (
+    lowerHist.some(
+      (h) =>
+        h.includes('hyperten') ||
+        h.includes('high bp') ||
+        h.includes('blood pressure')
+    )
+  ) {
+    alerts.push(
+      `VASCULAR ALERT: History of hypertension. Monitor for signs of acute stroke (FAST: Face drooping, Arm weakness, Slurred speech).`
+    );
+  }
+
+  // Custom or remaining conditions
+  const otherItems = history.filter(
+    (h) =>
+      !h.toLowerCase().includes('allerg') &&
+      !h.toLowerCase().includes('penicillin') &&
+      !h.toLowerCase().includes('latex') &&
+      !h.toLowerCase().includes('aspirin') &&
+      !h.toLowerCase().includes('blood thinner') &&
+      !h.toLowerCase().includes('anticoagulant') &&
+      !h.toLowerCase().includes('warfarin') &&
+      !h.toLowerCase().includes('heparin') &&
+      !h.toLowerCase().includes('eliquis') &&
+      !h.toLowerCase().includes('asthma') &&
+      !h.toLowerCase().includes('copd') &&
+      !h.toLowerCase().includes('inhaler') &&
+      !h.toLowerCase().includes('diabet') &&
+      !h.toLowerCase().includes('insulin') &&
+      !h.toLowerCase().includes('sugar') &&
+      !h.toLowerCase().includes('cardiac') &&
+      !h.toLowerCase().includes('heart') &&
+      !h.toLowerCase().includes('seizure') &&
+      !h.toLowerCase().includes('epilepsy') &&
+      !h.toLowerCase().includes('hyperten')
+  );
+  if (otherItems.length > 0) {
+    alerts.push(
+      `ADDITIONAL MEDICAL HISTORY: ${otherItems.join(', ')}. Report to 112 emergency paramedics upon arrival.`
+    );
+  }
+
+  return alerts;
+}
+
 export function evaluateOfflineTriage(userInput: string, context?: PatientContext): TriageResult {
+  const result = evaluateBaseOfflineTriage(userInput, context);
+  const medicalAlerts = generateMedicalAlerts(context?.medicalHistory || [], userInput, context);
+
+  if (medicalAlerts.length > 0) {
+    result.medicalAlerts = medicalAlerts;
+
+    // Prepend allergy warnings into criticalDoNots if relevant
+    const allergyList = (context?.medicalHistory || []).filter(
+      (h) =>
+        h.toLowerCase().includes('allerg') ||
+        h.toLowerCase().includes('penicillin') ||
+        h.toLowerCase().includes('latex')
+    );
+    if (allergyList.length > 0) {
+      result.criticalDoNots.unshift(`DO NOT administer drugs or materials containing: ${allergyList.join(', ')}.`);
+    }
+
+    // Add note to MIST handover report
+    result.mistReport.treatment = `${result.mistReport.treatment} [Medical History: ${context?.medicalHistory?.join(', ')}]`;
+
+    // Append brief medical history reminder to responder audio script
+    const alertTitles = medicalAlerts.map((a) => a.split(':')[0]).slice(0, 2).join(' and ');
+    result.responderAudioScript = `${result.responderAudioScript} Caution: ${alertTitles} noted.`;
+  }
+
+  return result;
+}
+
+function evaluateBaseOfflineTriage(userInput: string, context?: PatientContext): TriageResult {
   const text = userInput.toLowerCase();
 
   const hasSnakebite =
@@ -84,6 +253,14 @@ export function evaluateOfflineTriage(userInput: string, context?: PatientContex
     text.includes('bijli') ||
     text.includes('electrocution');
 
+  const hasBloodThinners = (context?.medicalHistory || []).some(
+    (h) =>
+      h.toLowerCase().includes('blood thinner') ||
+      h.toLowerCase().includes('anticoagulant') ||
+      h.toLowerCase().includes('warfarin') ||
+      h.toLowerCase().includes('aspirin')
+  );
+
   const hasSevereBleeding =
     text.includes('arterial') ||
     text.includes('spurting') ||
@@ -92,7 +269,8 @@ export function evaluateOfflineTriage(userInput: string, context?: PatientContex
     text.includes('khoon') ||
     text.includes('pools of blood') ||
     text.includes('tourniquet') ||
-    context?.severeBleeding;
+    context?.severeBleeding ||
+    (hasBloodThinners && (text.includes('bleed') || text.includes('cut') || text.includes('wound')));
 
   const isUnconscious =
     text.includes('unconscious') ||
