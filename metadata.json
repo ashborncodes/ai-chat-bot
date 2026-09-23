@@ -1,0 +1,10 @@
+{
+  "name": "RescueTriage AI - First Responder Emergency Triage",
+  "description": "Emergency triage chatbot for first responders in India. Classifies injury urgency into Red, Yellow, Green, or Black tags, provides step-by-step first-aid, and connects to SOS 112.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
