@@ -9,6 +9,7 @@ import {
   Volume2 
 } from 'lucide-react';
 import { TriageResult } from '../types/triage';
+import { triggerSOSVibration } from '../utils/haptics';
 
 interface EmergencyCallModalProps {
   isOpen: boolean;
@@ -26,6 +27,9 @@ export const EmergencyCallModal: React.FC<EmergencyCallModalProps> = ({
   const [selectedNumber, setSelectedNumber] = useState('112');
 
   useEffect(() => {
+    if (isOpen) {
+      triggerSOSVibration();
+    }
     if (isOpen && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -83,7 +87,10 @@ export const EmergencyCallModal: React.FC<EmergencyCallModalProps> = ({
         {/* Number Selector */}
         <div className="flex items-center gap-2 mb-3">
           <button
-            onClick={() => setSelectedNumber('112')}
+            onClick={() => {
+              triggerSOSVibration();
+              setSelectedNumber('112');
+            }}
             className={`flex-1 py-2 px-3 rounded-xl border text-xs font-mono font-bold transition flex items-center justify-center gap-1.5 ${
               selectedNumber === '112'
                 ? 'bg-red-700 text-white border-red-500 shadow-md shadow-red-950'
@@ -95,7 +102,10 @@ export const EmergencyCallModal: React.FC<EmergencyCallModalProps> = ({
           </button>
 
           <button
-            onClick={() => setSelectedNumber('108')}
+            onClick={() => {
+              triggerSOSVibration();
+              setSelectedNumber('108');
+            }}
             className={`flex-1 py-2 px-3 rounded-xl border text-xs font-mono font-bold transition flex items-center justify-center gap-1.5 ${
               selectedNumber === '108'
                 ? 'bg-red-700 text-white border-red-500 shadow-md shadow-red-950'
@@ -110,6 +120,7 @@ export const EmergencyCallModal: React.FC<EmergencyCallModalProps> = ({
         {/* Big One-Click Call Button */}
         <a
           href={`tel:${selectedNumber}`}
+          onClick={triggerSOSVibration}
           className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 font-extrabold text-lg text-white shadow-xl shadow-red-950 border border-red-400 transition transform active:scale-95 mb-4"
         >
           <PhoneCall className="w-5 h-5 animate-bounce" />

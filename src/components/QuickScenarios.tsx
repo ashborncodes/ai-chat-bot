@@ -22,9 +22,9 @@ interface ScenarioPreset {
 const PRESETS: ScenarioPreset[] = [
   {
     id: 'bike_accident',
-    title: 'Bike / Road Crash',
+    title: 'Road Crash & Bleed',
     tag: 'RED',
-    description: 'Two-wheeler collision, heavy bleeding from leg, conscious but dizzy',
+    description: 'Deep arterial cut on leg, heavy bleeding through cloth, pale & dizzy',
     prompt: 'Bike collision on road. Rider has a deep 3-inch cut on calf, bright red blood is bleeding heavily through cloth, dizzy and pale, conscious and breathing.',
     icon: Flame,
     context: {
@@ -37,9 +37,9 @@ const PRESETS: ScenarioPreset[] = [
   },
   {
     id: 'snakebite',
-    title: 'Snakebite Emergency',
+    title: 'Snakebite Injury',
     tag: 'RED',
-    description: 'Bitten by snake in field/compound, fang marks, swelling and panic',
+    description: 'Puncture fang marks on ankle, rapid swelling, pain & nausea',
     prompt: 'Person bitten on ankle by unknown snake in garden 15 mins ago. Two fang puncture marks visible, severe burning pain and swelling starting, patient is scared and dizzy.',
     icon: AlertOctagon,
     context: {
@@ -54,7 +54,7 @@ const PRESETS: ScenarioPreset[] = [
     id: 'electric_shock',
     title: 'Electric Shock',
     tag: 'RED',
-    description: 'Touched live electric wire/cooler, collapsed, need to verify power off',
+    description: 'Exposed wire shock, power shut off, unresponsive, shallow breathing',
     prompt: 'Worker got electric shock from open cooler wire and collapsed on floor. Main switch turned off immediately. Person is unresponsive and breathing is very shallow.',
     icon: Zap,
     context: {
@@ -67,9 +67,9 @@ const PRESETS: ScenarioPreset[] = [
   },
   {
     id: 'cardiac_collapse',
-    title: 'Unconscious / No Breathing',
+    title: 'Cardiac Arrest',
     tag: 'RED',
-    description: 'Sudden collapse, not breathing, needs immediate hands-only CPR',
+    description: 'Sudden collapse, unresponsive, not breathing normally, CPR needed',
     prompt: 'Elderly person collapsed suddenly in room, unconscious, not responding to shout or pinch, no chest rise, not breathing normally.',
     icon: HeartCrack,
     context: {
@@ -82,9 +82,9 @@ const PRESETS: ScenarioPreset[] = [
   },
   {
     id: 'fracture_fall',
-    title: 'Fracture / Bone Injury',
+    title: 'Arm Fracture',
     tag: 'YELLOW',
-    description: 'Fall from stairs, forearm crooked/broken, conscious with severe pain',
+    description: 'Fall from stairs, forearm visibly deformed with intense pain, alert',
     prompt: 'Fell down staircase, left wrist and forearm visibly crooked and deformed with intense swelling. Conscious, breathing normally, fingers are warm.',
     icon: ShieldAlert,
     context: {
@@ -97,9 +97,9 @@ const PRESETS: ScenarioPreset[] = [
   },
   {
     id: 'road_rash_scrape',
-    title: 'Minor Road Rash / Cut',
+    title: 'Superficial Abrasions',
     tag: 'GREEN',
-    description: 'Minor scrape from bicycle skid, bleeding stopped, walking',
+    description: 'Minor road rash from scooter skid, walking and fully alert',
     prompt: 'Skidded on loose gravel on scooter at low speed. Superficial abrasions on knee and palms with slight bleeding already clotted, walking wounded and alert.',
     icon: Footprints,
     context: {
@@ -122,44 +122,46 @@ export const QuickScenarios: React.FC<QuickScenariosProps> = ({
   isLoading,
 }) => {
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-          COMMON EMERGENCIES IN INDIA (1-TAP TEST)
+    <div className="bg-slate-900/40 border border-white/[0.08] rounded-2xl p-3 sm:p-4 backdrop-blur-xl">
+      <div className="flex items-center justify-between mb-2.5 px-0.5">
+        <span className="text-[12px] font-medium text-slate-300">
+          Emergency Presets
         </span>
-        <span className="text-[10px] text-slate-400">Tap to run</span>
+        <span className="text-[11px] text-slate-500">
+          Tap for rapid protocol evaluation
+        </span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         {PRESETS.map((scenario) => {
           const Icon = scenario.icon;
+          const tagColors = {
+            RED: 'text-red-400 bg-red-500/10 border-red-500/20',
+            YELLOW: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+            GREEN: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+          };
+
           return (
             <button
               key={scenario.id}
               disabled={isLoading}
               onClick={() => onSelectScenario(scenario.prompt, scenario.context)}
-              className="p-2.5 rounded-lg border border-slate-800 bg-slate-950/70 hover:bg-slate-900 hover:border-slate-700 text-left transition flex flex-col justify-between group disabled:opacity-50"
+              className="p-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.12] text-left transition-all active:scale-[0.98] flex flex-col justify-between group disabled:opacity-40"
             >
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <Icon className="w-4 h-4 text-slate-300 group-hover:text-white" />
-                  <span
-                    className={`text-[9px] font-mono px-1 py-0.2 rounded font-bold ${
-                      scenario.tag === 'RED'
-                        ? 'bg-red-950 text-red-400 border border-red-800'
-                        : scenario.tag === 'YELLOW'
-                        ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                        : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                    }`}
-                  >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="p-1 rounded-lg bg-white/[0.05] text-slate-300 group-hover:text-white transition-colors">
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
+                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md border font-medium ${tagColors[scenario.tag]}`}>
                     {scenario.tag}
                   </span>
                 </div>
-                <h6 className="text-xs font-bold text-slate-200 group-hover:text-white truncate">
+                <h4 className="text-xs font-semibold text-slate-200 group-hover:text-white truncate">
                   {scenario.title}
-                </h6>
+                </h4>
               </div>
-              <p className="text-[10px] text-slate-400 line-clamp-1 mt-1">
+              <p className="text-[11px] text-slate-400 line-clamp-1 mt-1 leading-snug">
                 {scenario.description}
               </p>
             </button>

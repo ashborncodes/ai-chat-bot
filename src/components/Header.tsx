@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
-  ShieldAlert, 
   PhoneCall, 
   Volume2, 
   VolumeX, 
   BookOpen, 
-  Users, 
-  Clock
+  Users
 } from 'lucide-react';
 import { OfflineIndicator } from './OfflineIndicator';
+import { triggerSOSVibration } from '../utils/haptics';
 
 interface HeaderProps {
   autoSpeak: boolean;
@@ -29,110 +28,81 @@ export const Header: React.FC<HeaderProps> = ({
   onViewChange,
   patientCount,
 }) => {
-  const [time, setTime] = useState<string>('');
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md">
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-[#0a0d14]/85 backdrop-blur-2xl transition-all">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 h-13 flex items-center justify-between gap-3">
         {/* Brand */}
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-red-600 text-white shadow-md shadow-red-950">
-            <ShieldAlert className="w-5 h-5 animate-pulse" />
-          </div>
-
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-base tracking-tight text-white">
-                RescueTriage <span className="text-red-400 text-xs px-1.5 py-0.5 rounded bg-red-950/90 border border-red-800/80 font-mono">INDIA 112</span>
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-400">
-              <span className="font-mono text-slate-300 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-slate-400" />
-                {time}
-              </span>
-              <span>•</span>
-              <span className="text-slate-300">First-Aid Triage</span>
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-red-500" />
+          <span className="font-semibold text-sm tracking-tight text-white font-sans">
+            RescueTriage
+          </span>
+          <span className="text-[11px] font-mono text-slate-500">
+            112
+          </span>
         </div>
 
-        {/* View Switcher (Simple) */}
-        <div className="hidden sm:flex items-center bg-slate-950 border border-slate-800 rounded-lg p-0.5 text-xs">
+        {/* Apple Segmented Control */}
+        <div className="flex items-center bg-white/[0.05] p-0.5 rounded-xl border border-white/[0.04]">
           <button
             onClick={() => onViewChange('triage')}
-            className={`px-3 py-1 rounded-md transition font-medium ${
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
               activeView === 'triage'
-                ? 'bg-slate-800 text-white shadow-sm'
+                ? 'bg-white/15 text-white shadow-sm font-semibold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Emergency Chat
+            Triage
           </button>
           <button
             onClick={() => onViewChange('mci')}
-            className={`px-3 py-1 rounded-md transition font-medium flex items-center gap-1 ${
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
               activeView === 'mci'
-                ? 'bg-slate-800 text-white shadow-sm'
+                ? 'bg-white/15 text-white shadow-sm font-semibold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Users className="w-3.5 h-3.5 text-amber-400" />
             <span>Scene Board</span>
             {patientCount > 0 && (
-              <span className="ml-1 px-1.5 bg-amber-500/20 text-amber-300 text-[10px] rounded-full font-mono">
+              <span className="px-1.5 py-0.2 bg-amber-400/20 text-amber-300 text-[10px] rounded-full font-mono">
                 {patientCount}
               </span>
             )}
           </button>
         </div>
 
-        {/* Right Controls: Offline Indicator, Auto-Voice, Guide, and SOS 112 */}
+        {/* Right Controls */}
         <div className="flex items-center gap-2">
-          {/* Offline & PWA Indicator */}
           <OfflineIndicator />
 
-          {/* Audio Guidance Toggle */}
+          {/* Audio toggle glyph */}
           <button
             onClick={onToggleAutoSpeak}
-            title={autoSpeak ? 'Voice guide active' : 'Voice guide off'}
-            className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition ${
-              autoSpeak
-                ? 'bg-blue-950/60 border-blue-700 text-blue-300'
-                : 'bg-slate-800/80 border-slate-700 text-slate-400'
-            }`}
+            title={autoSpeak ? 'Audio narration enabled' : 'Audio narration muted'}
+            className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors"
           >
             {autoSpeak ? <Volume2 className="w-4 h-4 text-blue-400" /> : <VolumeX className="w-4 h-4" />}
-            <span className="hidden md:inline text-[11px] font-medium">{autoSpeak ? 'Audio ON' : 'Audio OFF'}</span>
           </button>
 
-          {/* Protocol Guide */}
+          {/* Protocols glyph */}
           <button
             onClick={onOpenProtocolModal}
-            title="Triage guidelines"
-            className="hidden sm:flex items-center gap-1 text-xs bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-700 transition"
+            title="Emergency Guidelines"
+            className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors hidden sm:block"
           >
-            <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-[11px]">Guidelines</span>
+            <BookOpen className="w-4 h-4" />
           </button>
 
-          {/* Primary SOS 112 Button (India) */}
+          {/* Minimal SOS Pill */}
           <button
-            onClick={onOpenCallModal}
-            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs sm:text-sm px-3.5 py-1.5 rounded-xl shadow-lg shadow-red-950 border border-red-400 transition active:scale-95 animate-pulse-urgent"
+            onClick={() => {
+              triggerSOSVibration();
+              onOpenCallModal();
+            }}
+            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white font-medium text-xs px-3 py-1.5 rounded-full transition-transform active:scale-95 shadow-md shadow-red-950/60"
           >
-            <PhoneCall className="w-4 h-4" />
-            <span>SOS 112</span>
+            <PhoneCall className="w-3.5 h-3.5" />
+            <span>112</span>
           </button>
         </div>
       </div>

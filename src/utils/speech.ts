@@ -15,7 +15,7 @@ export function isSpeechRecognitionSupported(): boolean {
   return typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 }
 
-export function createSpeechRecognition(handlers: SpeechRecognitionHandlers) {
+export function createSpeechRecognition(handlers: SpeechRecognitionHandlers, lang: string = 'en-IN') {
   if (!isSpeechRecognitionSupported()) {
     handlers.onError('Speech recognition is not supported in this browser.');
     return null;
@@ -26,33 +26,46 @@ export function createSpeechRecognition(handlers: SpeechRecognitionHandlers) {
 
   recognition.continuous = true;
   recognition.interimResults = true;
-  recognition.lang = 'en-IN';
+  recognition.lang = lang;
 
   recognition.onstart = () => {
     handlers.onStart();
   };
 
+  // Fixed onresult: Reconstructs full session transcript to prevent repeated/duplicated words
   recognition.onresult = (event: any) => {
-    let interimTranscript = '';
     let finalTranscript = '';
+    let interimTranscript = '';
 
-    for (let i = event.resultIndex; i < event.results.length; ++i) {
+    for (let i = 0; i < event.results.length; ++i) {
+      const text = event.results[i][0]?.transcript || '';
       if (event.results[i].isFinal) {
-        finalTranscript += event.results[i][0].transcript;
+        finalTranscript += (finalTranscript ? ' ' : '') + text.trim();
       } else {
-        interimTranscript += event.results[i][0].transcript;
+        interimTranscript += (interimTranscript ? ' ' : '') + text.trim();
       }
     }
 
-    const combined = finalTranscript || interimTranscript;
+    const combined = [finalTranscript, interimTranscript].filter(Boolean).join(' ').trim();
     if (combined) {
       handlers.onResult(combined, Boolean(finalTranscript));
     }
   };
 
   recognition.onerror = (event: any) => {
-    console.warn('Speech recognition error:', event.error);
-    handlers.onError(event.error);
+    const err = event.error;
+    // 'no-speech' and 'aborted' are normal lifecycle events; don't report as errors
+    if (err === 'no-speech' || err === 'aborted') {
+      return;
+    }
+    console.warn('Speech recognition error:', err);
+    if (err === 'not-allowed') {
+      handlers.onError('Microphone access blocked. Please allow microphone permission in your browser address bar.');
+    } else if (err === 'audio-capture') {
+      handlers.onError('No microphone found or input device is muted.');
+    } else {
+      handlers.onError(`Voice error: ${err}`);
+    }
   };
 
   recognition.onend = () => {
@@ -81,6 +94,7 @@ export function speakText(
   options?: {
     rate?: number;
     pitch?: number;
+    lang?: string;
     onEnd?: () => void;
     onStart?: () => void;
   }
@@ -97,12 +111,18 @@ export function speakText(
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = options?.rate ?? 1.0;
   utterance.pitch = options?.pitch ?? 1.0;
-  utterance.lang = 'en-US';
+  utterance.lang = options?.lang ?? 'en-US';
 
-  // Attempt to select a natural English voice if loaded
+  // Attempt to select a natural voice if available
   const voices = window.speechSynthesis.getVoices();
   const naturalVoice = voices.find(
-    (v) => (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Daniel')) && v.lang.startsWith('en')
+    (v) =>
+      (v.name.includes('Natural') ||
+        v.name.includes('Google') ||
+        v.name.includes('Samantha') ||
+        v.name.includes('Daniel') ||
+        v.name.includes('Siri')) &&
+      v.lang.startsWith(options?.lang?.slice(0, 2) || 'en')
   );
   if (naturalVoice) {
     utterance.voice = naturalVoice;
